@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import isEmail from 'validator/lib/isEmail';
 
 export interface IUser extends Document {
     username: string;
@@ -12,16 +13,18 @@ const UserSchema = new Schema(
     {
         username: {
             type: String,
+            required: 'User name is required',
             unique: true,
         },
         email: {
             type: String,
-            required: 'Email обязателен!',
+            required: 'Email is required!',
+            validate: [isEmail, 'Invalid Email'],
             unique: true,
         },
         password: {
             type: String,
-            required: 'Пароль обязателен',
+            required: 'Password is required',
         },
         last_seen: {
             type: Date,
