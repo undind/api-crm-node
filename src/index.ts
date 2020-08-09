@@ -17,7 +17,7 @@ const UsersController = new Users();
 
 //Users
 app.post('/api/signup', UsersController.registration);
-app.get('/api/signin', UsersController.login);
+app.post('/api/signin', UsersController.login);
 
 app.use('*', async (req: express.Request, res: express.Response) => {
     await res.sendFile(path.join(__dirname, '.', 'index.html'));
