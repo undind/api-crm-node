@@ -4,6 +4,7 @@ import cors from 'cors';
 import path from 'path';
 
 import { Users } from '../controllers';
+import checkAuth from '../middlewares/checkAuth';
 import { validateSignIn, validateSignUp } from '../helpers/validation';
 
 const createRoutes = (app: express.Express) => {
@@ -11,6 +12,7 @@ const createRoutes = (app: express.Express) => {
 
     app.use(cors());
     app.use(bodyParser.json());
+    app.use(checkAuth);
 
     //Users
     app.post('/api/signup', validateSignUp, UserController.registration);

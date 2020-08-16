@@ -1,32 +1,28 @@
 import express from 'express';
+import bcrypt from 'bcrypt';
 import { validationResult } from 'express-validator';
 
-import UserModel, { IUser } from '../models/User';
+import UserModel from '../models/User';
+import { IUser } from '../types/users';
+import createJWToken from '../helpers/createJWToken';
 
 class UserController {
-    login = async (req: express.Request, res: express.Response) => {
+    login = async (req: express.Request, res: express.Response): Promise<void> => {
         try {
             const postData = {
                 username: req.body.username,
                 password: req.body.password,
-            };
+            } as Pick<IUser, 'username' | 'password'>;
 
             const errors = validationResult(req);
 
             if (!errors.isEmpty()) {
-                return res.status(422).json({ errors: errors.array() });
+                res.status(422).json({ errors: errors.array() });
             }
 
             await UserModel.findOne(
-                { username: postData.username, password: postData.password },
+                { username: postData.username },
                 (err, user: IUser) => {
-                    if (postData?.password !== user?.password || postData?.username !== user?.username) {
-                        return res.status(403).json({
-                            status: 'error',
-                            message: 'Not correct password or login',
-                        });
-                    }
-
                     if (err || !user) {
                         return res.status(404).json({
                             status: 'error',
@@ -34,15 +30,18 @@ class UserController {
                         });
                     }
 
-                    return res.json({
-                        status: 'success',
-                        user: {
-                            username: req.body.username,
-                            email: user.email,
-                            last_seen: user.last_seen,
-                            _id: user._id,
-                        },
-                    });
+                    if (bcrypt.compareSync(postData.password, user.password)) {
+                        const token = createJWToken(user);
+                        return res.status(200).json({
+                            status: 'success',
+                            token
+                        })
+                    } else {
+                        return res.status(403).json({
+                            status: 'error',
+                            message: 'Incorrect password or email'
+                        })
+                    }
                 }
             );
         } catch (error) {
@@ -53,42 +52,42 @@ class UserController {
         }
     };
 
-    registration = async (req: express.Request, res: express.Response) => {
+    registration = async (req: express.Request, res: express.Response): Promise<void> => {
         try {
             const postData = {
                 username: req.body.username,
                 email: req.body.email,
                 password: req.body.password,
-            };
+            } as Pick<IUser, 'username' | 'password' | 'email'>;
 
             const errors = validationResult(req);
 
             if (!errors.isEmpty()) {
-                return res.status(422).json({ status: 'error', message: errors.array()[0].msg });
+                res.status(422).json({ status: 'error', message: errors.array()[0].msg });
             }
 
             const userName = postData.username;
-            const foundedUser = await UserModel.findOne({ username: userName });
+            const foundedUser: IUser | null = await UserModel.findOne({ username: userName });
             if (foundedUser) {
-                return res.status(401).json({
+                res.status(401).json({
                     status: 'error',
                     message: `User with name: ${userName} already exist!`,
                 });
             }
 
             const userMail = postData.email;
-            const foundedUserbyMail = await UserModel.findOne({ email: userMail });
-            if (foundedUserbyMail) {
-                return res.status(401).json({
+            const foundedUserByMail: IUser | null = await UserModel.findOne({ email: userMail });
+            if (foundedUserByMail) {
+                res.status(401).json({
                     status: 'error',
                     message: `User with email: ${userMail} already exist!`,
                 });
             }
 
-            const user = new UserModel(postData);
+            const user: IUser = new UserModel(postData);
 
-            const newUser = await user.save();
-            res.json(newUser);
+            const newUser: IUser = await user.save();
+            res.status(200).json({ status: 'success' });
         } catch (error) {
             res.status(500).json({
                 status: 'error',
